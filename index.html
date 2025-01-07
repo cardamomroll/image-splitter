@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线长图切割工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        input[type="file"],
+        input[type="number"],
+        input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #preview {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #preview img {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 10px;
+        }
+        #progressBar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: none;
+        }
+        #progressBar div {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+        .loading {
+            display: inline-block;
+            margin-left: 10px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>在线长图切割工具</h1>
+        
+        <div class="form-group">
+            <label for="file">选择图片:</label>
+            <input type="file" id="file" accept="image/*" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="num_parts">切割份数:</label>
+            <input type="number" id="num_parts" min="2" value="3" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="overlap_ratio">重叠比例: <span id="overlap-value">10%</span></label>
+            <input type="range" id="overlap_ratio" min="0" max="50" value="10">
+        </div>
+
+        <div id="preview">
+            <canvas id="previewCanvas" style="display: none;"></canvas>
+        </div>
+        
+        <div id="progressBar">
+            <div></div>
+        </div>
+        
+        <button id="splitButton" disabled>选择图片开始切割</button>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('file');
+        const numPartsInput = document.getElementById('num_parts');
+        const overlapRatioInput = document.getElementById('overlap_ratio');
+        const overlapValue = document.getElementById('overlap-value');
+        const splitButton = document.getElementById('splitButton');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const progressBar = document.getElementById('progressBar');
+        let imageUrl = null;
+
+        // 更新重叠比例显示
+        overlapRatioInput.addEventListener('input', function() {
+            overlapValue.textContent = this.value + '%';
+        });
+
+        // 处理文件选择
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                imageUrl = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = function() {
+                    previewCanvas.style.display = 'block';
+                    previewCanvas.width = img.width;
+                    previewCanvas.height = img.height;
+                    const ctx = previewCanvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    splitButton.disabled = false;
+                    splitButton.textContent = '开始切割';
+                };
+                img.src = imageUrl;
+            }
+        });
+
+        // 切割图片
+        async function splitImage(img, numParts, overlapRatio) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            const totalHeight = img.height;
+            const baseHeight = Math.floor(totalHeight / numParts);
+            const overlapHeight = Math.floor(baseHeight * (overlapRatio / 100));
+            const sliceHeight = baseHeight + overlapHeight;
+            
+            const slices = [];
+            
+            for (let i = 0; i < numParts; i++) {
+                const startY = Math.floor(i * baseHeight);
+                const endY = i === numParts - 1 ? totalHeight : startY + sliceHeight;
+                
+                const sliceCanvas = document.createElement('canvas');
+                sliceCanvas.width = img.width;
+                sliceCanvas.height = endY - startY;
+                
+                const sliceCtx = sliceCanvas.getContext('2d');
+                sliceCtx.drawImage(canvas, 
+                    0, startY, img.width, endY - startY,
+                    0, 0, img.width, endY - startY
+                );
+                
+                // 转换为Blob
+                const blob = await new Promise(resolve => {
+                    sliceCanvas.toBlob(resolve, 'image/png');
+                });
+                slices.push(blob);
+                
+                // 更新进度条
+                progressBar.querySelector('div').style.width = `${((i + 1) / numParts) * 100}%`;
+            }
+            
+            return slices;
+        }
+
+        // 处理切割按钮点击
+        splitButton.addEventListener('click', async function() {
+            if (!imageUrl) return;
+            
+            splitButton.disabled = true;
+            splitButton.textContent = '处理中...';
+            progressBar.style.display = 'block';
+            
+            const img = new Image();
+            img.onload = async function() {
+                try {
+                    const numParts = parseInt(numPartsInput.value);
+                    const overlapRatio = parseInt(overlapRatioInput.value);
+                    
+                    const slices = await splitImage(img, numParts, overlapRatio);
+                    
+                    // 创建ZIP文件
+                    const zip = new JSZip();
+                    slices.forEach((blob, i) => {
+                        zip.file(`part_${i + 1}.png`, blob);
+                    });
+                    
+                    // 生成并下载ZIP
+                    const content = await zip.generateAsync({type: 'blob'});
+                    const downloadUrl = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = 'split_images.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    // 清理
+                    URL.revokeObjectURL(downloadUrl);
+                    splitButton.textContent = '切割完成！';
+                    setTimeout(() => {
+                        splitButton.disabled = false;
+                        splitButton.textContent = '开始切割';
+                        progressBar.style.display = 'none';
+                        progressBar.querySelector('div').style.width = '0';
+                    }, 2000);
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    splitButton.textContent = '处理出错，请重试';
+                    splitButton.disabled = false;
+                }
+            };
+            img.src = imageUrl;
+        });
+    </script>
+</body>
+</html>
