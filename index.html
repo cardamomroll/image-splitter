@@ -3,26 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>更适合文手宝宝体质的长图切割工具 by 微博@小豆蔻肉桂卷</title>
+    <title>更适合文手宝宝体质的长图切割工具</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: #BFCAC2;
+            color: #78677A;
+        }
+        .author-header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #78677A;
+            font-size: 1.1em;
+        }
+        .author-name {
+            color: #78677A;
+            font-weight: bold;
         }
         .container {
-            background-color: white;
+            background-color: rgba(255, 255, 255, 0.9);
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(120, 103, 122, 0.2);
         }
         h1 {
             text-align: center;
-            color: #333;
+            color: #78677A;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #78677A;
             margin-bottom: 30px;
+            font-size: 0.9em;
         }
         .form-group {
             margin-bottom: 20px;
@@ -30,19 +48,20 @@
         label {
             display: block;
             margin-bottom: 5px;
-            color: #666;
+            color: #78677A;
         }
         input[type="file"],
         input[type="number"],
         input[type="range"] {
             width: 100%;
             padding: 8px;
-            border: 1px solid #ddd;
+            border: 1px solid #BFCAC2;
             border-radius: 4px;
             box-sizing: border-box;
+            color: #78677A;
         }
         button {
-            background-color: #4CAF50;
+            background-color: #78677A;
             color: white;
             padding: 10px 20px;
             border: none;
@@ -52,10 +71,10 @@
             font-size: 16px;
         }
         button:hover {
-            background-color: #45a049;
+            background-color: #665768;
         }
         button:disabled {
-            background-color: #cccccc;
+            background-color: #BFCAC2;
             cursor: not-allowed;
         }
         #preview {
@@ -67,35 +86,84 @@
             max-height: 300px;
             margin-top: 10px;
         }
-        #progressBar {
-            width: 100%;
-            height: 20px;
-            background-color: #78677A;
-            border-radius: 10px;
-            overflow: hidden;
+        .progress-container {
             margin-top: 10px;
             display: none;
         }
-        #progressBar div {
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            color: #78677A;
+            font-size: 0.9em;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #BFCAC2;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar div {
             height: 100%;
-            background-color: #A6BAAF;
+            background-color: #78677A;
             width: 0;
             transition: width 0.3s ease;
         }
-        .loading {
-            display: inline-block;
-            margin-left: 10px;
-            animation: spin 1s linear infinite;
+        #uploadProgress {
+            margin-bottom: 15px;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        #processProgress {
+            margin-bottom: 5px;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .footer a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .visit-count {
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #888;
+        }
+        .visit-count span {
+            margin: 0 10px;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .file-info {
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .warning {
+            color: #e65100;
+            font-size: 0.9em;
+            margin-top: 5px;
+            display: none;
+        }
+        .error {
+            color: #d32f2f;
+            font-size: 0.9em;
+            margin-top: 5px;
+            display: none;
         }
     </style>
 </head>
 <body>
+    <div class="author-header">
+        Created with 💚 by <span class="author-name">微博@小豆蔻肉桂卷</span>
+    </div>
     <div class="container">
-        <h1>在线长图切割工具</h1>
+        <h1>更适合文手宝宝体质的在线长图切割工具</h1>
         
         <div class="form-group">
             <label for="file">选择图片:</label>
@@ -104,12 +172,12 @@
         
         <div class="form-group">
             <label for="num_parts">切割份数:</label>
-            <input type="number" id="num_parts" min="2" value="3" required>
+            <input type="number" id="num_parts" min="2" value="4" required>
         </div>
         
         <div class="form-group">
             <label for="overlap_ratio">重叠比例: <span id="overlap-value">10%</span></label>
-            <input type="range" id="overlap_ratio" min="0" max="50" value="10">
+            <input type="range" id="overlap_ratio" min="0" max="50" value="5">
         </div>
 
         <div id="preview">
@@ -118,6 +186,28 @@
         
         <div id="progressBar">
             <div></div>
+        </div>
+
+        <div id="processProgress" class="progress-container">
+            <div class="progress-label">
+                <span>处理进度</span>
+                <span class="progress-percent">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            By <a href="#" class="author-name">@小豆蔻肉桂卷</a> | 2025
+            <div class="visit-count">
+                <span id="busuanzi_container_site_pv">
+                    总访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                <span id="busuanzi_container_site_uv">
+                    | 访客数 <span id="busuanzi_value_site_uv"></span> 人
+                </span>
+            </div>
         </div>
         
         <button id="splitButton" disabled>选择图片开始切割</button>
@@ -199,6 +289,7 @@
             return slices;
         }
 
+        
         // 处理切割按钮点击
         splitButton.addEventListener('click', async function() {
             if (!imageUrl) return;
@@ -250,5 +341,8 @@
             img.src = imageUrl;
         });
     </script>
+
+    
+
 </body>
 </html>
